@@ -1,0 +1,269 @@
+---
+title: 'BDE_Final_Project: Project Proposal'
+output:
+  html_document: default
+  word_document: default
+date: "`r Sys.Date()`"
+authors: Yash Shah, Ritwik Budhiraja
+---
+
+
+##### Loading the dataset and the required libraries
+
+
+```{r}
+Employee_dataset <- read.csv("/Users/yash/Desktop/yash/Classes/Big Data in Economics/Final Project/Employee.csv",stringsAsFactors = TRUE)
+install.packages('tidyverse')
+library(tidyverse)
+library(scales)
+library(ggplot2)
+library(dplyr)
+install.packages("gridExtra",repos = "http://cran.us.r-project.org")             
+library(gridExtra) 
+```
+
+
+##### Structure of Data (Head & Dimensions)
+
+
+```{r}
+head(Employee_dataset)
+dim(Employee_dataset)
+```
+
+
+##### Glimpse of the data
+
+
+```{r}
+Employee_dataset %>% glimpse
+```
+
+
+##### Data Management
+
+
+```{r}
+Employee_dataset <- Employee_dataset %>% 
+  # Creating Dummy Variables
+  mutate(
+    AttritionDummy = ifelse(Employee_dataset$Attrition == 'Yes', 1, 0),
+    OverTimeDummy = ifelse(Employee_dataset$OverTime == 'Yes', 1, 0)
+    ) %>% 
+  # Removing Redundant Variables
+  select(
+    -EmployeeCount, -StandardHours, -Over18
+    ) 
+```
+```{r}
+# Finding if missing values exist
+sum(is.na(Employee_dataset)) 
+```
+
+```{r}
+Employee_dataset <- Employee_dataset %>% 
+  # Creating Dummy Variables
+  mutate(
+    GenderDummy = ifelse(Employee_dataset$Gender == 'Male', 1, 0))
+    
+```
+
+##### Exploratory Data Analysis
+
+
+```{r}
+# Checking out for imbalance in the dataset
+
+attr_gg <- Employee_dataset %>% group_by(Attrition) %>% summarise(Count=n()) %>%
+  ggplot(aes(x = Attrition, y = Count)) + 
+  geom_bar(stat = "identity", fill = "orange", color = "black") +
+  theme_bw() + 
+  labs(title = "Employee Attrition (Count)", x = "Attrition", y = "# of Employees") 
+
+attr_ratio_gg <- Employee_dataset %>% group_by(Attrition) %>% summarise(Count=n()) %>% 
+  mutate(attr_percentage = round(prop.table(Count),2)) %>% 
+  ggplot(aes(x=Attrition, y = attr_percentage, label = scales::percent(attr_percentage))) + 
+  geom_bar(stat="identity", fill = "steelblue", color = "black") + 
+  theme_bw() + 
+  geom_text( vjust = 0) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Employee Attrition (%)", x = "Attrition", y = "Percentage") 
+
+grid.arrange(attr_gg, attr_ratio_gg, ncol = 2)
+```
+
+
+##### The following visualizations are a part of the previous phases of this project with a few changes having made to them. The insights are accurate and would be used for the future parts too. They are just a part of this Notebook too help us keep a track of the work done previously. The EDA part of the final project would be much more polished and only include the necessary charts.
+
+
+```{r}
+age_dist <- ggplot(data = Employee_dataset, mapping = aes(x = Age)) +
+  geom_bar(mapping = aes(color = Attrition)) +
+  ggtitle("Attrition vs. Age")
+age_dist
+```
+
+
+- Generally, younger people tend to leave the company more. Down the line, people get settled in and are happy with their current situation. Hence, the attrition ratio starts to go down around the age of 30. 
+
+
+```{r}
+dept_dist <- ggplot(data = Employee_dataset, mapping = aes(x = Department)) +
+  geom_bar(mapping = aes(color = Attrition))+
+  ggtitle("Attrition vs. Department")
+
+summarise(group_by(Employee_dataset, Department, Attrition), count = n()) 
+dept_dist
+```
+
+
+- This data comprises of only 3 major departments and looking at the counts and proportions, we can say that the Sales department has the highest attrition (around 25%), followed by the Human Resources department (around 19%). The Research & Development sees the lowest attrition (around 13%).
+
+
+```{r}
+monthly_income_dist <- ggplot(data = Employee_dataset, mapping = aes(x = MonthlyIncome)) +
+  geom_histogram(mapping = aes(color = Attrition))+
+  ggtitle("Attrition vs. Monthly Income")
+
+monthly_income_dist
+```
+
+
+- The attrition rate is evidently high at extremely low income levels—less than 5k monthly—as shown in the above chart. This falls, but at 10,000, a slight bump is seen that denotes the middle class lifestyle. They frequently change jobs in order to pursue a higher level of living. The flat line (from 14000 - 18000) indicates that there is little risk of an employee leaving the company while the monthly pay is respectable.
+
+
+```{r}
+dist_from_home_dist <- ggplot(data = Employee_dataset, mapping = aes(x = DistanceFromHome)) +
+  geom_bar(mapping = aes(color = Attrition))+
+  ggtitle("Attrition vs. Distance From Home")
+
+dist_from_home_dist
+```
+
+- Most of the people who leave the company are located within than 1-10 miles away from the company. We would expect distance to be a cause of attrition for the employees but it is not so.
+
+
+```{r}
+salary_hike_dist <- ggplot(data = Employee_dataset, mapping = aes(x = PercentSalaryHike)) +              geom_bar(mapping = aes(color = Attrition))+
+  ggtitle("Attrition vs.Percent Salary Hike")
+
+salary_hike_dist
+```
+
+
+- Increased pay encourages employees to perform better and stick with the company. As a result, we can observe that a company where the raise is lesser has far higher risks of losing an employee than one that offers a big raise.
+
+
+```{r}
+y_at_company <- ggplot(data = Employee_dataset, mapping = aes(x = YearsAtCompany)) +
+  geom_bar(mapping = aes(color = Attrition))+
+  ggtitle("Attrition vs. Years at a Company")
+
+y_at_company 
+```
+
+
+- We can see that the first two bars have a higher ratio of yes to the total count compared to the remaining. This could be probably because of the fact that employees have to stay for the probationary period, and they tend to leave if they are not satisfied with the company after that.  
+
+
+##### Correlation Matrix
+```{r}
+install.packages("reshape2")
+library(reshape2)
+library(ggplot2)
+corr_data <- Employee_dataset[, c(33,1,6,7,22,26,28,29,34,35)]
+head(corr_data)
+cormat <- round(cor(corr_data),3)
+head(cormat)
+melted_cormat <- melt(cormat)
+head(melted_cormat)
+
+
+get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+}
+
+upper_tri <- get_upper_tri(cormat)
+upper_tri
+
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+correlation_matrix <- ggplot(data = melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "navy", high = "darkgreen", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name="Correlation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+
+correlation_matrix
+```
+On inspecting the visualizations and then correlation matrix heatmap, since we consider Attrition to be our target variable, we can say that attrition is correlated with variables like TotalWorkingYears, YearsAtCompany and Age at the most.
+
+##### Splitting Train/Test Data
+
+```{r}
+#install.packages("caTools")
+#library(caTools)
+set.seed(12345)
+selected.var <- c(29,18,21,26,1,4,15,6,12,14,33)
+selected.df <- Employee_dataset[, selected.var]
+str(selected.df)
+```
+
+##### Logistic Regression Model 1
+```{r}
+fit.log1 <- glm(AttritionDummy ~ ., data = train.df, family = "binomial")
+options(scipen = 999) 
+summary(fit.log1)
+```
+
+
+```{r}
+install.packages('caret')
+install.packages('e1071')
+library(caret)
+library(e1071)
+fit.log1.pred <- predict(fit.log1, test.df,  type = "response")
+pred <- ifelse(fit.log1.pred > 0.3, 1, 0)
+confusionMatrix(factor(pred), factor(test.df$AttritionDummy), positive = "1")
+```
+```{r}
+library(pROC)
+fit.log1.pred<- predict(fit.log1, test.df,  type = "response")
+pred <- ifelse(fit.log1.pred > 0.3, 1, 0)
+r <- roc(test.df$AttritionDummy, fit.log1.pred)
+plot.roc(r)
+coords(r, x = "best")
+
+coords(r, x = c(0.1, 0.2, 0.5))
+```
+#####Logistic Regression Model 2
+```{r}
+set.seed(12345)
+selected.var <- c(25,31,32,3,5,33,8,10,35,16,19)
+selected.df <- Employee_dataset[, selected.var]
+str(selected.df)
+```
+```{r}
+fit.log2 <- glm(AttritionDummy ~ ., data = train.df, family = "binomial")
+options(scipen = 999) 
+summary(fit.log2)
+```
+```{r}
+fit.log2.pred <- predict(fit.log2, test.df,  type = "response")
+pred <- ifelse(fit.log2.pred > 0.3, 1, 0)
+confusionMatrix(factor(pred), factor(test.df$AttritionDummy), positive = "1")
+```
+```{r}
+fit.log2.pred<- predict(fit.log2, test.df,  type = "response")
+pred <- ifelse(fit.log2.pred > 0.3, 1, 0)
+r1 <- roc(test.df$AttritionDummy, fit.log2.pred)
+plot.roc(r1)
+coords(r1, x = "best")
+
+coords(r1, x = c(0.1, 0.2, 0.5))
+```
+
